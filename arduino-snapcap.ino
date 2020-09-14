@@ -79,6 +79,11 @@ void setup()
   analogWrite(ledPin, 0);
 
   myservo.attach(3); // серва подключена к 3 пину
+
+  delay(500);
+
+  // Положение закрыто
+  myservo.write(5);
 }
 
 void loop() 
@@ -261,19 +266,7 @@ void SetShutter(int val)
   if( val == OPEN && coverStatus != OPEN )
   {
     coverStatus = OPEN;
-    for (pos = 259; pos >= 0; pos -= 1) { // вращение выходного вала от 180 градусов до 0 градусов
-    
-    myservo.write(pos); // даем команду выйти в положение, которое записано в переменной 'pos'
-    
-    delay(15); // ждем 15 мс, пока серва выйдет в заданное положение
-    
-    }
-    // TODO: Implement code to OPEN the shutter.
-  }
-  else if( val == CLOSED && coverStatus != CLOSED )
-  {
-    coverStatus = CLOSED;
-    for (pos = 0; pos <= 250; pos += 1) { // вращаем ротор от 0 до 180 градусов
+    for (pos = 5; pos <= 250; pos += 1) { // вращаем ротор от 0 до 180 градусов
     
     // с шагом в 1 градус
     
@@ -282,6 +275,21 @@ void SetShutter(int val)
     delay(15); // ждем 15 миллисекунд, пока ротор сервы выйдет в заданную позицию
     
     }
+    // TODO: Implement code to OPEN the shutter.
+  }
+  else if( val == CLOSED && coverStatus != CLOSED )
+  {
+    coverStatus = CLOSED;
+    for (pos = 250; pos >= 5; pos -= 1) { // вращение выходного вала от 180 градусов до 0 градусов
+    
+    myservo.write(pos); // даем команду выйти в положение, которое записано в переменной 'pos'
+    
+    delay(15); // ждем 15 мс, пока серва выйдет в заданное положение
+    
+    }
+
+    
+
     
     // TODO: Implement code to CLOSE the shutter
   }
