@@ -8,6 +8,7 @@ Who:
 
 When: 
   Last modified:  2013/May/05
+                  2021/Juin/29  (SCL)
 
 
 Typical usage on the command prompt:
@@ -33,11 +34,13 @@ Recieve  : *D19000\n    //confirms light turned off.
 #define SERVOMIN 5
 #define SERVOMAX 250
 
+#define PINSERVO 11 //5  // Choix: 3,5,6,9,10,11 (PWM)
+#define PINFLAT   8 //3  // Choix: 3,5,6,9,10,11
+#define PINBUTTON 2
+
 Servo myservo;  // create servo object to control a servo
 
-int pos = 0;// переменная для хранения текущего положения сервы
-
-volatile int ledPin = 8;      // the pin that the LED is attached to, needs to be a PWM pin.
+int pos = 0;
 int brightness = 0;
 
 enum devices
@@ -76,37 +79,44 @@ int coverStatus = CLOSED;
 
 void setup()
 {
+  // Initialisation du bouton
+  pinMode(PINBUTTON,INPUT_PULLUP);
   // initialize the serial communication:
-  Serial.begin(9600);
+  Serial.begin(38400);
   // initialize the ledPin as an output:
-  pinMode(ledPin, OUTPUT);
-  analogWrite(ledPin, 0);
+  pinMode(PINFLAT, OUTPUT);
+  analogWrite(PINFLAT, 0);
   // Lecture de la position du couvercle
   EEPROM.get(0,coverStatus);
   if (coverStatus != OPEN && coverStatus != CLOSED) {
     coverStatus=CLOSED;
     EEPROM.put(0,coverStatus);
   }
-    myservo.write(( coverStatus==CLOSED)?SERVOMIN:SERVOMAX);
-  myservo.attach(11); // серва подключена к 3 пину
-
+  myservo.write(( coverStatus==CLOSED)?SERVOMIN:SERVOMAX);
+  myservo.attach(PINSERVO); // серва подключена к 3 пину
   delay(500);
 }
 
 void loop() 
 {
   handleSerial();
+  if (!digitalRead(PINBUTTON)) {
+    // Bouton appuyé, on change d'état le couvercle
+    if (coverStatus==CLOSED) {  
+      SetShutter(OPEN);
+    }
+    else {
+      SetShutter(CLOSED);
+    }
+  }
 }
-
 
 void handleSerial()
 {
-  
   if( Serial.available() >= 5 )  // all incoming communications are fixed length at 6 bytes including the \n
   { 
-    
     char* cmd;
-  char* data;
+    char* data;
     char temp[10];
     
     int len = 0;
@@ -116,19 +126,15 @@ void handleSerial()
     
   // I don't personally like using the \n as a command character for reading.  
   // but that's how the command set is.
-    Serial.readBytesUntil('\n', str, 20);
-
+  Serial.readBytesUntil('\n', str, 20);
   cmd = str + 1;
   data = str + 2;
-  
   // useful for debugging to make sure your commands came through and are parsed correctly.
     if( false )
     {
       sprintf( temp, "cmd = >%c%s;", cmd, data);
       Serial.println(temp);
     } 
-    
-
 
     switch( *cmd )
     {
@@ -157,7 +163,6 @@ void handleSerial()
       SetShutter(OPEN);
       break;
 
-
       /*
     Close shutter
       Request: >C000\n
@@ -182,7 +187,7 @@ void handleSerial()
       sprintf(temp, "*L000", deviceId);
       Serial.println(temp);
       lightStatus = ON;
-      analogWrite(ledPin, brightness);
+      analogWrite(PINFLAT, brightness);
       break;
 
     /*
@@ -195,7 +200,7 @@ void handleSerial()
       sprintf(temp, "*D000", deviceId);
       Serial.println(temp);
       lightStatus = OFF;
-      analogWrite(ledPin, 0);
+      analogWrite(PINFLAT, 0);
       break;
 
     /*
@@ -209,7 +214,7 @@ void handleSerial()
       case 'B':
       brightness = atoi(data);    
       if( lightStatus == ON ) 
-        analogWrite(ledPin, brightness);   
+        analogWrite(PINFLAT, brightness);   
       sprintf( temp, "*B%03d", brightness );
       Serial.println(temp);
         break;
@@ -273,31 +278,23 @@ void SetShutter(int val)
   if( val == OPEN && coverStatus != OPEN )
   {
     coverStatus = OPEN;
-    for (pos = SERVOMIN; pos <= SERVOMAX; pos++) { // вращаем ротор от 0 до 180 градусов
-      // с шагом в 1 градус
-      myservo.write(pos); // даем серве команду повернуться в положение, которое задается в переменной 'pos'
-      delay(15); // ждем 15 миллисекунд, пока ротор сервы выйдет в заданную позицию
+    for (pos = SERVOMIN; pos <= SERVOMAX; pos++) { 
+      myservo.write(pos); 
+      delay(12); 
     }
     EEPROM.put(0,coverStatus);
-    // TODO: Implement code to OPEN the shutter.
   }
   else if( val == CLOSED && coverStatus != CLOSED )
   {
     coverStatus = CLOSED;
-    for (pos = SERVOMAX; pos >= SERVOMIN; pos--) { // вращение выходного вала от 180 градусов до 0 градусов
-      myservo.write(pos); // даем команду выйти в положение, которое записано в переменной 'pos'
-      delay(15); // ждем 15 мс, пока серва выйдет в заданное положение
+    for (pos = SERVOMAX; pos >= SERVOMIN; pos--) { 
+      myservo.write(pos); 
+      delay(12); 
     }
     EEPROM.put(0,coverStatus);
-    
-
-    
-    // TODO: Implement code to CLOSE the shutter
   }
   else
   {
-    // TODO: Actually handle this case
     coverStatus = val;
   }
-  
 }
