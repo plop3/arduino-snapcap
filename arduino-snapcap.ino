@@ -28,12 +28,16 @@ Recieve  : *D19000\n    //confirms light turned off.
 */
 
 #include <Servo.h>
+#include <EEPROM.h>
+
+#define SERVOMIN 5
+#define SERVOMAX 250
 
 Servo myservo;  // create servo object to control a servo
 
 int pos = 0;// переменная для хранения текущего положения сервы
 
-volatile int ledPin = 13;      // the pin that the LED is attached to, needs to be a PWM pin.
+volatile int ledPin = 8;      // the pin that the LED is attached to, needs to be a PWM pin.
 int brightness = 0;
 
 enum devices
@@ -77,13 +81,16 @@ void setup()
   // initialize the ledPin as an output:
   pinMode(ledPin, OUTPUT);
   analogWrite(ledPin, 0);
-
-  myservo.attach(3); // серва подключена к 3 пину
+  // Lecture de la position du couvercle
+  EEPROM.get(0,coverStatus);
+  if (coverStatus != OPEN && coverStatus != CLOSED) {
+    coverStatus=CLOSED;
+    EEPROM.put(0,coverStatus);
+  }
+    myservo.write(( coverStatus==CLOSED)?SERVOMIN:SERVOMAX);
+  myservo.attach(11); // серва подключена к 3 пину
 
   delay(500);
-
-  // Положение закрыто
-  myservo.write(5);
 }
 
 void loop() 
@@ -266,28 +273,22 @@ void SetShutter(int val)
   if( val == OPEN && coverStatus != OPEN )
   {
     coverStatus = OPEN;
-    for (pos = 5; pos <= 250; pos += 1) { // вращаем ротор от 0 до 180 градусов
-    
-    // с шагом в 1 градус
-    
-    myservo.write(pos); // даем серве команду повернуться в положение, которое задается в переменной 'pos'
-    
-    delay(15); // ждем 15 миллисекунд, пока ротор сервы выйдет в заданную позицию
-    
+    for (pos = SERVOMIN; pos <= SERVOMAX; pos++) { // вращаем ротор от 0 до 180 градусов
+      // с шагом в 1 градус
+      myservo.write(pos); // даем серве команду повернуться в положение, которое задается в переменной 'pos'
+      delay(15); // ждем 15 миллисекунд, пока ротор сервы выйдет в заданную позицию
     }
+    EEPROM.put(0,coverStatus);
     // TODO: Implement code to OPEN the shutter.
   }
   else if( val == CLOSED && coverStatus != CLOSED )
   {
     coverStatus = CLOSED;
-    for (pos = 250; pos >= 5; pos -= 1) { // вращение выходного вала от 180 градусов до 0 градусов
-    
-    myservo.write(pos); // даем команду выйти в положение, которое записано в переменной 'pos'
-    
-    delay(15); // ждем 15 мс, пока серва выйдет в заданное положение
-    
+    for (pos = SERVOMAX; pos >= SERVOMIN; pos--) { // вращение выходного вала от 180 градусов до 0 градусов
+      myservo.write(pos); // даем команду выйти в положение, которое записано в переменной 'pos'
+      delay(15); // ждем 15 мс, пока серва выйдет в заданное положение
     }
-
+    EEPROM.put(0,coverStatus);
     
 
     
